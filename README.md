@@ -1,14 +1,20 @@
 ################
 Prerequisites:
 ################
+
 Step 1. Install ceph client and add client.admin.keyring from the path, /etc/ceph
+
 Step 2. Check the ceph status and it perfectly communicates with the backup node.
+
 Step 3. Download the Openstack openrc file to create a hidden file from the backup node.
+
 Step 4. Install openstack client then check the status (For eg. openstack server list)
+
 #######################################
 Setting Up Bareos configuration Files:
 #######################################
 Step 1. Create a config file FileSet, Job, JobDef and Schedule
+
 For eg.
 FileSet {
   Name = "demo"
@@ -33,6 +39,7 @@ Job {
   Pool = Incremental
   Priority = 10
 }
+
 JobDefs {
   Name = "demo"
   Type = Backup
@@ -48,11 +55,13 @@ JobDefs {
   Client Run After Job = "/etc/bareos/scripts/remove.sh"        # backup remove script
   Write Bootstrap = "/var/lib/bareos/%c.bsr"
   }
+  
   Schedule {
   Name = "demo"
   Run = Level=Full 1st mon at 05:30                                        # scheduling time for run jobs
   Run = Level=Differential 2nd-5th mon at 05:30
 }
+
 Step 2. In order for this script to delete old volumes from disk you need to set 3 directives in your Bareos Pool directive(s)
 
 Recycle = yes                               # Bareos can automatically recycle Volumes
@@ -63,6 +72,7 @@ Go to path, /etc/bareos/bareos-dir.d/pool
 ###############################
 Storage Daemon Configuration:
 ###############################
+
 Step 1. Add the storage device configuration file
 
 For Eg.
@@ -77,11 +87,14 @@ Device {
   AlwaysOpen = no;
   Description = "File device. A connecting Director must have the same Name and MediaType."
 }
+
+
 ###############################
 Customized backup scripts:
 ###############################
 
 Step 1. Make directory for this location, /etc/bareos
+
 mkdir /etc/bareos/scripts
 
 Backup script : /etc/bareos/scripts/backup.sh 
