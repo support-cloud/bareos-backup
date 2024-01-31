@@ -24,7 +24,7 @@ signature = MD5
 compression = LZ4
 noatime = yes
 }
-File = /disk1/tmp        # Temporarymount vol path
+File = [Temporary mount vol path]
 }
 Ignore FileSet Changes = yes
 }
