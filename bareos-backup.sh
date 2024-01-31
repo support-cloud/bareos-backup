@@ -16,14 +16,15 @@ while IFS= read -r vm; do
 done < <(openstack --insecure server list --all-projects --long | awk 'NR>=4 {print $4}')
 
 for i in "${vmnames[@]:start:end}"; do
-    # Create a directory for the VM backup
-    backup_dir="/disk1/tmp/$i"
-    if [[ ! -e "$backup_dir" ]]; then
-        mkdir -p "$backup_dir"
-    fi
-
+    
     # Get VM IDs for the instance
     vm_ids=($(nova --insecure list --all-tenants --status=Active | grep "$i" | awk '{print $2}'))
+    # Create a directory for the VM backup
+    backup_dir="/disk1/tmp/$i"
+    
+    if [[ ! -e "$backup_dir" ]]; then
+        mkdir -p "$backup_dir"
+    fi  
 
     for j in "${vm_ids[@]}"; do
         # Reset the array for each VM
