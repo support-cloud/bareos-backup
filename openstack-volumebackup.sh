@@ -3,7 +3,7 @@
 # Authorship: XAASABLITY Product (Copyleft: all rights reversed).
 # Tested by: Sahul Hameed (Sr.Devops Support Engineer)
 # Log file path
-log_file="/var/log/volume_scripts.log"
+log_file="/var/log/volume-scripts.log"
 # Function to log messages
 log() {
     local timestamp
@@ -23,7 +23,7 @@ done < <(openstack --insecure server list --all-projects --long | awk 'NR>=4 {pr
 # Loop through VMs
 for vm in "${vmnames[@]:start:end}"; do
     if [ -z "$vm" ]; then
-      log "Null value encountered. Exiting loop."
+      log "VM name null value returned. Exiting loop."
       break
     fi
     log "Processing VM: $vm"
@@ -41,16 +41,23 @@ for vm in "${vmnames[@]:start:end}"; do
           rbd_ids=($(rbd ls -p volumes | grep volume-"$vol"))
           for rbd_id in "${rbd_ids[@]}"; do
              if [ "$rbd_id" == volume-"$vol" ]; then
-               log "Processing RBD ID: $rbd_id"
-               log "Snapshot doesn't exist. Creating..."
-               rbd snap create volumes/$rbd_id@${vol}
-               log "Snapshot created. Exporting..."
-               rbd export --rbd-concurrent-management-ops 120 volumes/$rbd_id@${vol} "$backup_dir/${vol}.img"
-               log "Export completed. Removing..."
-               rbd snap rm volumes/$rbd_id@${vol}
+               log "Processing volume RBD ID: $rbd_id"
+               # Check if snapshot already exists
+               if rbd info volumes/$rbd_id@${vol} &> /dev/null; then
+                  log "Volume snapshot already exists ${vol}. Exporting..."
+                  rbd export --rbd-concurrent-management-ops 120 volumes/$rbd_id@${vol} "$backup_dir/${vol}.img"
+                  rbd snap rm volumes/$rbd_id@${vol}
+               else
+                  log "Volume snapshot doesn't exist. Creating..."
+                  rbd snap create volumes/$rbd_id@${vol}
+                  log "Volume snapshot created. Exporting..."
+                  rbd export --rbd-concurrent-management-ops 120 volumes/$rbd_id@${vol} "$backup_dir/${vol}.img"
+                  log "Export completed. Removing..."
+                  rbd snap rm volumes/$rbd_id@${vol}
+               fi
              fi
           done
        done
     fi
 done
-log "Script execution completed."
+log "Volume Backup Script execution completed."
