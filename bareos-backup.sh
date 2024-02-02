@@ -4,22 +4,17 @@
 # Tested by: Sahul Hameed (Sr.Devops Support Engineer)
 
 # Log file path
-log_file="/var/log/scripts.log"
-
+log_file="/var/log/vmbackup-scripts.log"
 # Function to log messages
 log() {
     local timestamp
     timestamp=$(date +"%Y-%m-%d %H:%M:%S")
     echo "[$timestamp] $1" >> "$log_file"
 }
-
 # Source the openrc file with the correct path
 source /root/.openrc
-
 # Initialize an array to store VM names
 vmnames=()
-
-# Set the start and end index for VMs
 start=0
 end=3
 
@@ -30,18 +25,19 @@ done < <(openstack --insecure server list --all-projects --long | awk 'NR>=4 {pr
 
 # Loop through VMs
 for vm in "${vmnames[@]:start:end}"; do
+    if [ -z "$vm" ]; then
+      log "Null value returned. Exiting loop..."
+      break
+    fi
     log "Processing VM: $vm"
-
-    # Get VM IDs for the instance
-    vm_ids=($(nova --insecure list --all-tenants | grep "$vm" | awk '{print $2}'))
-
     # Create a directory for the VM backup
     backup_dir="/disk1/tmp/$vm"
-    mkdir -p "$backup_dir"
+    if [[ ! -e "$backup_dir" ]]; then
+      mkdir -p "$backup_dir"
+    fi
     log "Backup directory created: $backup_dir"
-
     # Loop through VM IDs
-    for vm_id in "${vm_ids[@]}"; do
+    for vm_id in $(nova --insecure list --all-tenants | grep "$vm" | awk '{print $2}'); do
         log "Processing VM ID: $vm_id"
 
         # Get RBD IDs for the VM ID
@@ -50,21 +46,23 @@ for vm in "${vmnames[@]:start:end}"; do
         # Loop through RBD IDs
         for rbd_id in "${rbd_ids[@]}"; do
             if [ "$rbd_id" == "${vm_id}_disk" ]; then
-                log "Processing RBD ID: $rbd_id"
+               log "Processing RBD ID: $rbd_id"
 
-                # Check if snapshot already exists
-                if rbd info vms/$rbd_id@${vm_id} &> /dev/null; then
-                    log "Snapshot already exists. Exporting..."
-                    rbd export --rbd-concurrent-management-ops 120 vms/$rbd_id@${vm_id} "$backup_dir/${vm_id}.img"
-                    rbd snap rm vms/$rbd_id@${vm_id}
-                else
-                    log "Snapshot doesn't exist. Creating..."
-                    rbd snap create vms/$rbd_id@${vm_id}
-                    rbd export --rbd-concurrent-management-ops 120 vms/$rbd_id@${vm_id} "$backup_dir/${vm_id}.img"
-                    rbd snap rm vms/$rbd_id@${vm_id}
-                fi
+               # Check if snapshot already exists
+               if rbd info vms/$rbd_id@${vm_id} &> /dev/null; then
+                  log "Snapshot already exists. Exporting..."
+                  rbd export --rbd-concurrent-management-ops 120 vms/$rbd_id@${vm_id} "$backup_dir/${vm_id}.img"
+                  rbd snap rm vms/$rbd_id@${vm_id}
+               else
+                  log "Snapshot doesn't exist. Creating..."
+                  rbd snap create vms/$rbd_id@${vm_id}
+                  log "Snapshot created. Exporting..."
+                  rbd export --rbd-concurrent-management-ops 120 vms/$rbd_id@${vm_id} "$backup_dir/${vm_id}.img"
+                  log "Export completed snapshot. Removing..."
+                  rbd snap rm vms/$rbd_id@${vm_id}
+               fi
             fi
         done
     done
 done
-log "Script execution completed."
+log "VM Backup Script execution completed."
